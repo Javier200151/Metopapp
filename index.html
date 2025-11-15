@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analizador de Instrucciones Squad Alpha</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      background: #0b1120;
+      color: #e5e7eb;
+    }
+    h1 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 1.6rem;
+    }
+    .subtitle {
+      color: #9ca3af;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+    .card {
+      background: rgba(15,23,42,0.9);
+      border-radius: 0.9rem;
+      padding: 1.2rem 1.4rem;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+      border: 1px solid rgba(148,163,184,0.25);
+      max-width: 980px;
+      margin: 0 auto 1.5rem;
+    }
+    label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #9ca3af;
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-end;
+      margin-bottom: 0.5rem;
+    }
+    .field {
+      flex: 1 1 160px;
+      min-width: 0;
+    }
+    .field.small {
+      flex: 0 0 150px;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.55rem 0.7rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(148,163,184,0.5);
+      background: rgba(15,23,42,0.9);
+      color: #e5e7eb;
+      font-size: 0.95rem;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(56,189,248,0.5);
+    }
+    button {
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      background: linear-gradient(135deg,#38bdf8,#6366f1);
+      color: white;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    button span.icon {
+      font-size: 1rem;
+    }
+    .status {
+      margin-top: 0.2rem;
+      font-size: 0.8rem;
+      color: #9ca3af;
+      min-height: 1em;
+    }
+    .status.error {
+      color: #fca5a5;
+    }
+    .results {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 1rem;
+      margin-top: 0.8rem;
+    }
+    @media (max-width: 800px) {
+      .results {
+        grid-template-columns: 1fr;
+      }
+    }
+    .results-section-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 0.3rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: rgba(15,23,42,0.8);
+      border: 1px solid rgba(148,163,184,0.4);
+      color: #e5e7eb;
+    }
+    .pill strong {
+      font-weight: 600;
+    }
+    .list {
+      max-height: 260px;
+      overflow: auto;
+      padding-right: 0.3rem;
+      font-size: 0.9rem;
+    }
+    .list ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0.2rem 0 0;
+    }
+    .list li {
+      padding: 0.2rem 0.1rem;
+      border-bottom: 1px dashed rgba(55,65,81,0.5);
+    }
+    .list li:last-child {
+      border-bottom: none;
+    }
+    .tagline {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 0.4rem;
+    }
+    a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.5);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+    }
+    .player-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+    }
+    .player-main {
+      font-weight: 500;
+    }
+    .player-meta {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      border: 1px solid transparent;
+    }
+    .status-ok {
+      background: rgba(22,163,74,0.15);
+      border-color: rgba(34,197,94,0.7);
+      color: #bbf7d0;
+    }
+    .status-bad {
+      background: rgba(220,38,38,0.15);
+      border-color: rgba(248,113,113,0.7);
+      color: #fecaca;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Analizador de Instrucciones</h1>
+    <div class="subtitle">
+      Escribe el código de la instrucción (ej. <code>CIBI</code>), cuántas páginas del foro quieres revisar
+      y cuántas veces seguidas se puede faltar antes de perder la metopa.
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="instr-input">Código de instrucción (4 letras)</label>
+        <input id="instr-input" type="text" maxlength="4" list="instr-list"
+               placeholder="Ej: CIBI" />
+        <datalist id="instr-list">
+          <option value="CEOD"></option>
+          <option value="CFAC"></option>
+          <option value="CIAC"></option>
+          <option value="CIAE"></option>
+          <option value="CIAM"></option>
+          <option value="CIBC"></option>
+          <option value="CIBI"></option>
+          <option value="CICO"></option>
+          <option value="CICU"></option>
+          <option value="CIET"></option>
+          <option value="CIEX"></option>
+          <option value="CIGR"></option>
+          <option value="CILA"></option>
+          <option value="CIMC"></option>
+          <option value="CIMG"></option>
+          <option value="CIMM"></option>
+          <option value="CIOE"></option>
+          <option value="CIOF"></option>
+          <option value="CIOR"></option>
+          <option value="CIOS"></option>
+          <option value="CIPC"></option>
+          <option value="CIPT"></option>
+          <option value="CREC"></option>
+          <option value="CUAV"></option>
+        </datalist>
+      </div>
+      <div class="field small">
+        <label for="pages-input">Páginas del foro</label>
+        <input id="pages-input" type="number" min="1" max="50" value="10" />
+      </div>
+      <div class="field small">
+        <label for="misses-input">Faltas seguidas permitidas</label>
+        <input id="misses-input" type="number" min="0" max="50" value="0" />
+      </div>
+      <div>
+        <button id="analyze-btn">
+          <span class="icon">⚙️</span>
+          Analizar
+        </button>
+      </div>
+    </div>
+    <div id="status" class="status"></div>
+
+    <div class="results">
+      <div>
+        <div class="results-section-title">Metopas en Excel</div>
+        <div class="pill" id="pill-excel">
+          <strong>0</strong> miembros con la metopa
+        </div>
+        <div class="list">
+          <ul id="excel-list"></ul>
+        </div>
+        <div class="tagline">
+          Fuente: Excel de miembros SQA.
+        </div>
+      </div>
+      <div>
+        <div class="results-section-title">Misiones en el backend</div>
+        <div class="pill" id="pill-misiones">
+          <strong>0</strong> misiones de esta instrucción
+        </div>
+        <div class="list">
+          <ul id="misiones-list"></ul>
+        </div>
+        <div class="tagline">
+          Fuente: <code>foro.squadalpha.es</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Usamos corsproxy para evitar CORS con Google Sheets (CSV)
+    const SHEET_CSV_URL =
+      "https://corsproxy.io/?https://docs.google.com/spreadsheets/d/e/2PACX-1vTuQORinglzn8kO3ywB2K6YYDZJCgaEWwBUlhNhBbg7uEyyku8tC7sCN1Um1BgFyT_oqqvqL-4IKROB/pub?gid=1944921834&single=true&output=csv";
+
+    const MISIONES_URL_BASE =
+      "https://sqa-backend-production.up.railway.app/api/misiones";
+
+    const VALID_INSTR = new Set([
+      "CEOD","CFAC","CIAC","CIAE","CIAM","CIBC","CIBI","CICO","CICU","CIET","CIEX",
+      "CIGR","CILA","CIMC","CIMG","CIMM","CIOE","CIOF","CIOR","CIOS","CIPC","CIPT",
+      "CREC","CUAV"
+    ]);
+
+    const input = document.getElementById("instr-input");
+    const pagesInput = document.getElementById("pages-input");
+    const missesInput = document.getElementById("misses-input");
+    const btn = document.getElementById("analyze-btn");
+    const statusEl = document.getElementById("status");
+    const excelListEl = document.getElementById("excel-list");
+    const misionesListEl = document.getElementById("misiones-list");
+    const pillExcel = document.getElementById("pill-excel");
+    const pillMisiones = document.getElementById("pill-misiones");
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg || "";
+      statusEl.classList.toggle("error", !!isError);
+    }
+
+    function clearResults() {
+      excelListEl.innerHTML = "";
+      misionesListEl.innerHTML = "";
+      pillExcel.querySelector("strong").textContent = "0";
+      pillMisiones.querySelector("strong").textContent = "0";
+    }
+
+    async function fetchSheetCSV() {
+      const res = await fetch(SHEET_CSV_URL);
+      if (!res.ok) {
+        throw new Error("No se pudo cargar el CSV de Google Sheets");
+      }
+      return await res.text();
+    }
+
+    // Parser CSV sencillo que respeta comillas dobles básicas
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let cur = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i + 1];
+
+        if (c === '"') {
+          if (inQuotes && next === '"') {
+            // comilla escapada ""
+            cur += '"';
+            i++; // saltar siguiente
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (c === "," && !inQuotes) {
+          row.push(cur);
+          cur = "";
+        } else if ((c === "\n" || c === "\r") && !inQuotes) {
+          if (cur !== "" || row.length > 0) {
+            row.push(cur);
+            rows.push(row);
+            row = [];
+            cur = "";
+          }
+          // si es \r\n saltamos el siguiente
+          if (c === "\r" && next === "\n") {
+            i++;
+          }
+        } else {
+          cur += c;
+        }
+      }
+
+      // Última celda / fila
+      if (cur !== "" || row.length > 0) {
+        row.push(cur);
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    // Primera fila = cabecera con cibi_ribbon, etc.
+    // Primera columna = nombres jugadores
+    // ✅ (o cualquier valor no vacío) = la tiene
+    function findMembersWithRibbon(csvText, instrCode) {
+      const rows = parseCSV(csvText);
+      if (rows.length < 2) return [];
+
+      const header = rows[0];
+      const targetHeader = instrCode.toLowerCase() + "_ribbon";
+
+      // Buscar columna de la metopa en la cabecera
+      let colIndex = -1;
+      for (let i = 1; i < header.length; i++) { // empezamos en 1 para saltar la columna de nombres
+        const h = (header[i] || "").trim().toLowerCase();
+        if (h === targetHeader) {
+          colIndex = i;
+          break;
+        }
+      }
+
+      if (colIndex === -1) {
+        console.warn("No se encontró columna para", targetHeader);
+        return [];
+      }
+
+      const members = [];
+
+      // Filas de datos: jugadores
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || !row.length) continue;
+
+        const name = (row[0] || "").trim(); // primera columna = nombre
+        if (!name) continue;
+
+        const cell = (row[colIndex] || "").trim();
+
+        // Si hay algo, consideramos que la tiene
+        if (cell) {
+          members.push(name);
+        }
+      }
+
+      return members;
+    }
+
+    async function fetchMisiones(pages) {
+      const url = `${MISIONES_URL_BASE}/${pages}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("No se pudo cargar el backend de misiones");
+      }
+      return await res.json();
+    }
+
+    function filterMisionesByInstr(misiones, instrCode) {
+      const target = instrCode.toUpperCase();
+      return misiones.filter(m =>
+        m.tipo === "Instruccion" &&
+        m.instruccion &&
+        m.instruccion.toUpperCase() === target
+      );
+    }
+
+    // Calcula:
+    // - asistencias totales
+    // - racha inicial de faltas (desde la misión más reciente hacia atrás,
+    //   hasta la primera asistencia o hasta que se acaben las misiones)
+    // - última misión donde participó
+    // Si rachaInicial > allowedMisses -> pierde metopa.
+    // IMPORTANTE: misiones deben venir ordenadas de más nueva a más antigua.
+    function computePlayerStats(members, misiones, allowedMisses) {
+      const totalMissions = misiones.length;
+      const stats = [];
+
+      for (const name of members) {
+        let participations = 0;
+        let totalMisses = 0;
+        let initialMissStreak = 0;
+        let initialZoneEnded = false; // se vuelve true al encontrar la primera asistencia
+        let lastMissionIndex = null;
+
+        for (let i = 0; i < misiones.length; i++) {
+          const m = misiones[i];
+          const content = (m.contenido_completo || "");
+          const attended = content.includes(name);
+
+          if (attended) {
+            participations++;
+            if (lastMissionIndex === null) {
+              // Primera vez que aparece: es la misión más reciente en la que participó
+              lastMissionIndex = i;
+            }
+            if (!initialZoneEnded) {
+              // Encontró asistencia; a partir de aquí las faltas ya no cuentan
+              initialZoneEnded = true;
+            }
+          } else {
+            totalMisses++;
+            if (!initialZoneEnded) {
+              // Solo contamos faltas en la "zona inicial" (desde ahora hacia atrás,
+              // hasta la primera asistencia).
+              initialMissStreak++;
+            }
+          }
+        }
+
+        const loses = initialMissStreak > allowedMisses;
+
+        let lastMissionTitle = null;
+        let lastMissionUrl = null;
+        if (lastMissionIndex !== null) {
+          const mLast = misiones[lastMissionIndex];
+          lastMissionTitle = mLast.titulo || "(sin título)";
+          lastMissionUrl = mLast.url || null;
+        }
+
+        stats.push({
+          name,
+          participations,
+          totalMissions,
+          totalMisses,
+          initialMissStreak,
+          allowedMisses,
+          lastMissionTitle,
+          lastMissionUrl,
+          loses
+        });
+      }
+
+      // Orden: primero los que pierden, luego los que mantienen, dentro alfabético
+      stats.sort((a, b) => {
+        if (a.loses !== b.loses) return a.loses ? -1 : 1; // rojos arriba
+        return a.name.localeCompare(b.name, "es");
+      });
+
+      return stats;
+    }
+
+    function renderPlayerStats(stats) {
+      excelListEl.innerHTML = "";
+      pillExcel.querySelector("strong").textContent = stats.length.toString();
+
+      if (!stats.length) {
+        excelListEl.innerHTML =
+          "<li>No se encontraron miembros con esta metopa.</li>";
+        return;
+      }
+
+      for (const st of stats) {
+        const li = document.createElement("li");
+        li.className = "player-row";
+
+        const leftTitle = document.createElement("div");
+        leftTitle.className = "player-main";
+        leftTitle.textContent = st.name;
+
+        const meta = document.createElement("div");
+        meta.className = "player-meta";
+
+        const lastText = st.lastMissionTitle
+          ? `Última: ${st.lastMissionTitle}`
+          : "Última: Nunca";
+
+        let summary;
+        if (st.totalMissions > 0) {
+          summary =
+            ` | Asistencias: ${st.participations}/${st.totalMissions}` +
+            ` | Racha de faltas: ${st.initialMissStreak} (límite ${st.allowedMisses})`;
+        } else {
+          summary = " | Sin misiones de esta instrucción en el rango analizado";
+        }
+
+        meta.textContent = lastText + summary;
+
+        if (st.lastMissionUrl) {
+          const link = document.createElement("a");
+          link.href = st.lastMissionUrl;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "Ver última misión";
+          link.style.marginLeft = "0.4rem";
+          link.style.fontSize = "0.78rem";
+          meta.appendChild(document.createTextNode(" "));
+          meta.appendChild(link);
+        }
+
+        const status = document.createElement("div");
+        status.className =
+          "status-pill " + (st.loses ? "status-bad" : "status-ok");
+        status.textContent = st.loses
+          ? "Pierde metopa"
+          : "Mantiene metopa";
+
+        const right = document.createElement("div");
+        right.appendChild(status);
+
+        const wrapper = document.createElement("div");
+        wrapper.style.flex = "1 1 auto";
+        wrapper.appendChild(leftTitle);
+        wrapper.appendChild(meta);
+
+        li.appendChild(wrapper);
+        li.appendChild(right);
+
+        excelListEl.appendChild(li);
+      }
+    }
+
+    function renderMisiones(misiones) {
+      misionesListEl.innerHTML = "";
+      pillMisiones.querySelector("strong").textContent =
+        misiones.length.toString();
+
+      if (!misiones.length) {
+        misionesListEl.innerHTML =
+          "<li>No se encontraron misiones de esta instrucción en las páginas analizadas.</li>";
+        return;
+      }
+
+      for (const m of misiones) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = m.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = m.titulo || "(sin título)";
+        li.appendChild(a);
+
+        if (m.tipo || m.instruccion) {
+          const span = document.createElement("span");
+          span.className = "badge";
+          span.style.marginLeft = "0.4rem";
+          span.textContent =
+            (m.tipo || "") +
+            (m.instruccion ? " · " + m.instruccion : "");
+          li.appendChild(span);
+        }
+
+        misionesListEl.appendChild(li);
+      }
+    }
+
+    async function handleAnalyze() {
+      let code = input.value.trim().toUpperCase();
+      input.value = code;
+
+      clearResults();
+
+      if (!code || code.length !== 4) {
+        setStatus("Introduce un código de instrucción de 4 letras.", true);
+        return;
+      }
+
+      if (!VALID_INSTR.has(code)) {
+        setStatus("Ese código no está en la lista de instrucciones válidas.", true);
+        return;
+      }
+
+      let pages = parseInt(pagesInput.value, 10);
+      if (isNaN(pages) || pages < 1) pages = 1;
+      if (pages > 50) pages = 50;
+      pagesInput.value = pages;
+
+      let allowedMisses = parseInt(missesInput.value, 10);
+      if (isNaN(allowedMisses) || allowedMisses < 0) allowedMisses = 0;
+      missesInput.value = allowedMisses;
+
+      setStatus("Analizando del excel y extrayendo misiones del foro...");
+      btn.disabled = true;
+
+      try {
+        const [csvText, misionesRaw] = await Promise.all([
+          fetchSheetCSV(),
+          fetchMisiones(pages)
+        ]);
+
+        const members = findMembersWithRibbon(csvText, code);
+        const misionesInstr = filterMisionesByInstr(misionesRaw, code);
+
+        const stats = computePlayerStats(members, misionesInstr, allowedMisses);
+
+        renderPlayerStats(stats);
+        renderMisiones(misionesInstr);
+
+        setStatus("Análisis completado.");
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message || "Error al analizar datos.", true);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener("click", handleAnalyze);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        handleAnalyze();
+      }
+    });
+
+    // Forzar mayúsculas visualmente
+    input.addEventListener("input", () => {
+      input.value = input.value.toUpperCase();
+    });
+  </script>
+</body>
+</html>
